@@ -1,250 +1,162 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import messagebox, simpledialog
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.linear_model import LinearRegression
 from sklearn.cluster import KMeans
-from sklearn.datasets import make_blobs, make_classification, load_iris
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 from statsmodels.tsa.arima.model import ARIMA
-import warnings
-warnings.filterwarnings("ignore")
-
-# Palette avec contraste élevé et visibilité optimale
-PALETTE = {
-    "background": "#1F7470",        # teal foncé pour fond principal
-    "card_bg": "#F0F8F1",           # vert très clair pour fenêtres modules
-    "primary": "#005BBB",           # bleu vif saturé, boutons & accents
-    "primary_dark": "#003D7A",      # bleu foncé pour hover et actif
-    "text": "#0D0D0D",              # texte très sombre, presque noir
-    "button_bg": "#005BBB",         # bleu vif pour boutons
-    "button_hover": "#003D7A",      # bleu foncé sur hover
-    "button_active": "#002651",     # bleu très foncé en clic
-    "code_bg": "#E8EEF7",           # fond clair légèrement bleuté pour code
-    "code_text": "#1B1B1B"          # texte sombre dans la zone code
-}
-
-FONT_TITLE = ("Segoe UI", 24, "bold")
-FONT_SUBTITLE = ("Segoe UI", 14)
-FONT_BUTTON = ("Segoe UI", 14, "bold")
-FONT_CODE = ("Consolas", 11)
-
-class ModuleWindow(tk.Toplevel):
-    def __init__(self, title, parent):
-        super().__init__(parent)
-        self.title(title)
-        self.geometry("700x600")
-        self.configure(bg=PALETTE["card_bg"])
-        
-        tk.Label(self, text=title, font=FONT_TITLE, bg=PALETTE["card_bg"], fg=PALETTE["text"]).pack(pady=10)
-
-        self.text_code = scrolledtext.ScrolledText(self, height=10, width=80, bg=PALETTE["code_bg"], fg=PALETTE["code_text"], font=FONT_CODE)
-        self.text_code.pack(pady=10, padx=10, fill="x")
-
-        self.btn_show_code = tk.Button(self, text="Afficher le code", command=self.show_code,
-                                      bg=PALETTE["button_bg"], fg="white", font=FONT_BUTTON, activebackground=PALETTE["button_hover"], borderwidth=0)
-        self.btn_show_code.pack(pady=5, ipadx=10, ipady=5)
-
-        self.btn_run = tk.Button(self, text="Exécuter l'algorithme", command=self.run_algorithm,
-                                 bg=PALETTE["button_bg"], fg="white", font=FONT_BUTTON, activebackground=PALETTE["button_hover"], borderwidth=0)
-        self.btn_run.pack(pady=5, ipadx=10, ipady=5)
-
-        self.label_result = tk.Label(self, text="", bg=PALETTE["card_bg"], fg=PALETTE["text"], font=FONT_SUBTITLE)
-        self.label_result.pack(pady=10)
-
-    def show_code(self):
-        pass
-
-    def run_algorithm(self):
-        pass
-
-class RegressionLineaireWindow(ModuleWindow):
-    def __init__(self, parent):
-        super().__init__("Régression Linéaire", parent)
-
-    def show_code(self):
-        code = '''import numpy as np
-from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-X = np.random.rand(200,1)*100
-y = 3*X + 7 + np.random.randn(200,1)*10
+class HealthAIApp:
+    def __init__(self, root):
+        self.root = root
+        root.title("HealthAI - Analyse de données de santé")
+        root.geometry("900x600")
+        root.configure(bg="#f0f0f0")
 
-model = LinearRegression()
-model.fit(X, y)
+        # Frame menu à gauche avec fond coloré
+        self.frame_menu = tk.Frame(root, bg="#2c3e50", width=220)
+        self.frame_menu.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
 
-print("Coef:", model.coef_[0][0])
-print("Intercept:", model.intercept_[0])'''
-        self.text_code.delete(1.0, tk.END)
-        self.text_code.insert(tk.END, code)
+        # Titre menu
+        title = tk.Label(self.frame_menu, text="Menu Principal", font=("Arial", 16, "bold"), bg="#2c3e50", fg="white")
+        title.grid(row=0, column=0, pady=20, padx=10)
 
-    def run_algorithm(self):
-        X = np.random.rand(200,1)*100
-        y = 3*X + 7 + np.random.randn(200,1)*10
-        model = LinearRegression()
-        model.fit(X, y)
-        coef = model.coef_[0][0]
-        intercept = model.intercept_[0]
-        self.label_result.config(text=f"Coef: {coef:.2f}, Intercept: {intercept:.2f}")
-        
-        plt.scatter(X, y, label="Données")
-        plt.plot(X, model.predict(X), color=PALETTE["primary_dark"], label="Modèle")
-        plt.title("Régression Linéaire")
-        plt.legend()
-        plt.show()
-
-class KMeansWindow(ModuleWindow):
-    def __init__(self, parent):
-        super().__init__("K-Means", parent)
-
-    def show_code(self):
-        code = '''from sklearn.cluster import KMeans
-from sklearn.datasets import make_blobs
-import matplotlib.pyplot as plt
-
-X, _ = make_blobs(n_samples=200, centers=3, cluster_std=1.0)
-model = KMeans(n_clusters=3)
-model.fit(X)
-
-print("Centres:", model.cluster_centers_)'''
-        self.text_code.delete(1.0, tk.END)
-        self.text_code.insert(tk.END, code)
-
-    def run_algorithm(self):
-        X, _ = make_blobs(n_samples=200, centers=3, cluster_std=1.0)
-        model = KMeans(n_clusters=3)
-        model.fit(X)
-        centers = model.cluster_centers_
-        self.label_result.config(text=f"Centres:\n{np.array2string(centers, precision=2)}")
-        
-        plt.scatter(X[:,0], X[:,1], c=model.labels_)
-        plt.scatter(centers[:,0], centers[:,1], c='red', marker='x', s=100)
-        plt.title("K-Means Clustering")
-        plt.show()
-
-class ARIMAWindow(ModuleWindow):
-    def __init__(self, parent):
-        super().__init__("ARIMA", parent)
-
-    def show_code(self):
-        code = '''import pandas as pd
-import numpy as np
-from statsmodels.tsa.arima.model import ARIMA
-
-data = pd.Series([100 + i + np.random.randn() for i in range(200)])
-model = ARIMA(data, order=(2,1,2))
-result = model.fit()
-print(result.summary())'''
-        self.text_code.delete(1.0, tk.END)
-        self.text_code.insert(tk.END, code)
-
-    def run_algorithm(self):
-        data = pd.Series([100 + i + np.random.randn() for i in range(200)])
-        model = ARIMA(data, order=(2,1,2))
-        result = model.fit()
-        self.label_result.config(text="ARIMA exécuté, voir graphique diagnostic.")
-        result.plot_diagnostics(figsize=(10,6))
-        plt.show()
-
-class RandomForestWindow(ModuleWindow):
-    def __init__(self, parent):
-        super().__init__("Random Forest", parent)
-
-    def show_code(self):
-        code = '''from sklearn.ensemble import RandomForestClassifier
-from sklearn.datasets import make_classification
-import matplotlib.pyplot as plt
-
-X, y = make_classification(n_samples=200, n_features=4, n_classes=2)
-model = RandomForestClassifier()
-model.fit(X, y)
-
-print(model.feature_importances_)'''
-        self.text_code.delete(1.0, tk.END)
-        self.text_code.insert(tk.END, code)
-
-    def run_algorithm(self):
-        X, y = make_classification(n_samples=200, n_features=4, n_classes=2)
-        model = RandomForestClassifier()
-        model.fit(X, y)
-        importances = model.feature_importances_
-        self.label_result.config(text="Importances: " + ", ".join(f"{imp:.2f}" for imp in importances))
-        
-        plt.bar(range(len(importances)), importances, color=PALETTE["primary"])
-        plt.xlabel("Features")
-        plt.ylabel("Importance")
-        plt.title("Feature Importances - Random Forest")
-        plt.show()
-
-class ValidationCroiseeWindow(ModuleWindow):
-    def __init__(self, parent):
-        super().__init__("Validation Croisée", parent)
-
-    def show_code(self):
-        code = '''from sklearn.datasets import load_iris
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_score
-import matplotlib.pyplot as plt
-
-X, y = load_iris(return_X_y=True)
-model = LogisticRegression(max_iter=1000)
-scores = cross_val_score(model, X, y, cv=5)
-
-print("Scores:", scores)
-print("Moyenne:", scores.mean())'''
-        self.text_code.delete(1.0, tk.END)
-        self.text_code.insert(tk.END, code)
-
-    def run_algorithm(self):
-        X, y = load_iris(return_X_y=True)
-        model = LogisticRegression(max_iter=1000)
-        scores = cross_val_score(model, X, y, cv=5)
-        self.label_result.config(text=f"Scores: {np.round(scores,3)}\nMoyenne: {scores.mean():.3f}")
-        
-        plt.bar(range(1,6), scores, color=PALETTE["primary"])
-        plt.xlabel("Fold")
-        plt.ylabel("Score")
-        plt.title("Validation Croisée 5-fold")
-        plt.ylim(0,1)
-        plt.show()
-
-class IAApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Application IA - EMSI")
-        self.geometry("420x430")
-        self.configure(bg=PALETTE["background"])
-
-        header = tk.Label(self, text="Sélectionnez un module", font=FONT_TITLE,
-                          bg=PALETTE["background"], fg=PALETTE["text"])
-        header.pack(pady=30)
-
-        style = ttk.Style(self)
-        style.theme_use('clam')
-
-        style.configure("TButton",
-                        background=PALETTE["button_bg"],
-                        foreground="white",
-                        font=FONT_BUTTON,
-                        padding=10,
-                        borderwidth=0)
-        style.map("TButton",
-                  background=[("active", PALETTE["button_hover"]), ("pressed", PALETTE["button_active"])])
-
-        btns = [
-            ("Régression Linéaire", RegressionLineaireWindow),
-            ("K-Means", KMeansWindow),
-            ("ARIMA", ARIMAWindow),
-            ("Random Forest", RandomForestWindow),
-            ("Validation Croisée", ValidationCroiseeWindow)
+        # Boutons colorés dans le menu, avec couleur et hover simplifié
+        button_specs = [
+            ("Régression Linéaire", self.run_regression, "#1abc9c"),
+            ("Clustering K-means", self.run_clustering, "#3498db"),
+            ("ARIMA (Séries temporelles)", self.run_arima, "#9b59b6"),
+            ("Forêt Aléatoire", self.run_random_forest, "#e67e22"),
+            ("1.3.6 Validation Croisée", self.run_cross_validation, "#e74c3c"),
+            ("Quitter", root.quit, "#c0392b")
         ]
 
-        for text, cls in btns:
-            b = ttk.Button(self, text=text, command=lambda c=cls: c(self))
-            b.pack(fill='x', padx=50, pady=10)
+        for i, (text, cmd, color) in enumerate(button_specs, start=1):
+            btn = tk.Button(self.frame_menu, text=text, command=cmd, bg=color, fg="white",
+                            activebackground="#34495e", font=("Arial", 12), bd=0, relief="raised")
+            btn.grid(row=i, column=0, sticky="ew", padx=10, pady=8)
+
+        # Zone graphique à droite
+        self.frame_graph = tk.Frame(root, bg="white")
+        self.frame_graph.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    def clear_frame(self):
+        for widget in self.frame_graph.winfo_children():
+            widget.destroy()
+
+    def _display_figure(self, fig):
+        self.clear_frame()
+        canvas = FigureCanvasTkAgg(fig, master=self.frame_graph)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    def run_regression(self):
+        np.random.seed(0)
+        ages = np.random.randint(20, 70, 100)
+        cholest = 0.5 * ages + np.random.normal(0, 5, 100)
+
+        model = LinearRegression()
+        model.fit(ages.reshape(-1, 1), cholest)
+        pred = model.predict(ages.reshape(-1, 1))
+
+        fig, ax = plt.subplots(figsize=(6,5))
+        ax.scatter(ages, cholest, label="Données réelles", c="#16a085", alpha=0.7)
+        ax.plot(ages, pred, color="#e74c3c", linewidth=2, label="Régression linéaire")
+        ax.set_title("Régression linéaire : âge vs cholestérol", fontsize=16, color="#2c3e50")
+        ax.set_xlabel("Âge", fontsize=12)
+        ax.set_ylabel("Cholestérol", fontsize=12)
+        ax.legend()
+        ax.grid(True, linestyle='--', alpha=0.5)
+
+        self._display_figure(fig)
+
+    def run_clustering(self):
+        np.random.seed(1)
+        imc = np.random.normal(25, 4, 100)
+        tension = np.random.normal(130, 15, 100)
+        data = np.column_stack((imc, tension))
+        kmeans = KMeans(n_clusters=3, random_state=1)
+        clusters = kmeans.fit_predict(data)
+
+        fig, ax = plt.subplots(figsize=(6,5))
+        scatter = ax.scatter(imc, tension, c=clusters, cmap="Set2", alpha=0.85, edgecolor='k')
+        ax.set_title("Clustering K-means : IMC et Tension", fontsize=16, color="#2c3e50")
+        ax.set_xlabel("IMC", fontsize=12)
+        ax.set_ylabel("Tension artérielle", fontsize=12)
+        legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
+        ax.add_artist(legend1)
+        ax.grid(True, linestyle='--', alpha=0.4)
+
+        self._display_figure(fig)
+
+    def run_arima(self):
+        np.random.seed(2)
+        data = np.cumsum(np.random.normal(0, 1, 50)) + 100
+        model = ARIMA(data, order=(2,1,2))
+        model_fit = model.fit()
+        forecast = model_fit.forecast(steps=10)
+
+        fig, ax = plt.subplots(figsize=(6,5))
+        ax.plot(range(len(data)), data, label="Glycémie historique", color="#2980b9", linewidth=2)
+        ax.plot(range(len(data), len(data)+10), forecast, label="Prévision ARIMA", color="#c0392b", linestyle='--', linewidth=2)
+        ax.set_title("Prévision glycémie avec ARIMA", fontsize=16, color="#2c3e50")
+        ax.set_xlabel("Temps (jours)", fontsize=12)
+        ax.set_ylabel("Glycémie", fontsize=12)
+        ax.legend()
+        ax.grid(True, linestyle='--', alpha=0.4)
+
+        self._display_figure(fig)
+
+    def run_random_forest(self):
+        np.random.seed(3)
+        X = np.random.randn(200, 5)
+        y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(200)*0.1 > 0).astype(int)
+
+        clf = RandomForestClassifier(n_estimators=100, random_state=3)
+        clf.fit(X, y)
+        importances = clf.feature_importances_
+
+        fig, ax = plt.subplots(figsize=(6,5))
+        bars = ax.bar(range(len(importances)), importances, color=["#27ae60", "#2980b9", "#8e44ad", "#d35400", "#c0392b"])
+        ax.set_title("Importance des variables - Forêt Aléatoire", fontsize=16, color="#2c3e50")
+        ax.set_xlabel("Variables", fontsize=12)
+        ax.set_ylabel("Importance", fontsize=12)
+        ax.grid(axis='y', linestyle='--', alpha=0.4)
+
+        self._display_figure(fig)
+
+    def run_cross_validation(self):
+        choice = simpledialog.askstring("Validation Croisée", "Choisissez le modèle :\n- regression\n- foret")
+        if choice is None:
+            return  # Annulation par l'utilisateur
+
+        choice = choice.strip().lower()
+
+        if choice == "regression":
+            np.random.seed(0)
+            ages = np.random.randint(20, 70, 100)
+            cholest = 0.5 * ages + np.random.normal(0, 5, 100)
+            model = LinearRegression()
+            scores = cross_val_score(model, ages.reshape(-1, 1), cholest, cv=5, scoring='r2')
+            messagebox.showinfo("Validation Croisée", 
+                f"Modèle : Régression linéaire\nScores R² pour chaque pli (5-fold) :\n{scores}\nMoyenne R² : {np.mean(scores):.3f}")
+
+        elif choice == "foret":
+            np.random.seed(3)
+            X = np.random.randn(200, 5)
+            y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(200)*0.1 > 0).astype(int)
+            clf = RandomForestClassifier(n_estimators=100, random_state=3)
+            scores = cross_val_score(clf, X, y, cv=5, scoring='accuracy')
+            messagebox.showinfo("Validation Croisée", 
+                f"Modèle : Forêt Aléatoire\nScores d'accuracy pour chaque pli (5-fold) :\n{scores}\nMoyenne accuracy : {np.mean(scores):.3f}")
+
+        else:
+            messagebox.showerror("Erreur", "Modèle non reconnu. Entrez 'regression' ou 'foret'.")
 
 if __name__ == "__main__":
-    app = IAApp()
-    app.mainloop()
+    root = tk.Tk()
+    app = HealthAIApp(root)
+    root.mainloop()
