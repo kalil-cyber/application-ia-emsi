@@ -8,6 +8,7 @@ from sklearn.model_selection import cross_val_score
 from statsmodels.tsa.arima.model import ARIMA
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from sklearn.metrics import mean_squared_error
 
 class HealthAIApp:
     def __init__(self, root):
@@ -62,16 +63,20 @@ class HealthAIApp:
         model.fit(ages.reshape(-1, 1), cholest)
         pred = model.predict(ages.reshape(-1, 1))
 
+        mse = mean_squared_error(cholest, pred)
+
         fig, ax = plt.subplots(figsize=(6,5))
         ax.scatter(ages, cholest, label="Données réelles", c="#16a085", alpha=0.7)
         ax.plot(ages, pred, color="#e74c3c", linewidth=2, label="Régression linéaire")
-        ax.set_title("Régression linéaire : âge vs cholestérol", fontsize=16, color="#2c3e50")
+        ax.set_title(f"Régression linéaire : âge vs cholestérol\nMSE = {mse:.2f}", fontsize=16, color="#2c3e50")
         ax.set_xlabel("Âge", fontsize=12)
         ax.set_ylabel("Cholestérol", fontsize=12)
         ax.legend()
         ax.grid(True, linestyle='--', alpha=0.5)
 
         self._display_figure(fig)
+
+        messagebox.showinfo("Résultat MSE", f"Erreur quadratique moyenne (MSE) : {mse:.2f}")
 
     def run_clustering(self):
         np.random.seed(1)
@@ -129,33 +134,23 @@ class HealthAIApp:
         self._display_figure(fig)
 
     def run_cross_validation(self):
-        choice = simpledialog.askstring("Validation Croisée", "Choisissez le modèle :\n- regression\n- foret")
-        if choice is None:
-            return  # Annulation par l'utilisateur
+        np.random.seed(4)
+        X = np.random.randn(200, 5)
+        y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(200)*0.1 > 0).astype(int)
 
-        choice = choice.strip().lower()
+        clf = RandomForestClassifier(n_estimators=100, random_state=4)
+        scores = cross_val_score(clf, X, y, cv=5)
 
-        if choice == "regression":
-            np.random.seed(0)
-            ages = np.random.randint(20, 70, 100)
-            cholest = 0.5 * ages + np.random.normal(0, 5, 100)
-            model = LinearRegression()
-            scores = cross_val_score(model, ages.reshape(-1, 1), cholest, cv=5, scoring='r2')
-            messagebox.showinfo("Validation Croisée", 
-                f"Modèle : Régression linéaire\nScores R² pour chaque pli (5-fold) :\n{scores}\nMoyenne R² : {np.mean(scores):.3f}")
+        fig, ax = plt.subplots(figsize=(6,5))
+        ax.bar(range(1, 6), scores, color="#2980b9")
+        ax.set_title("Validation croisée - Forêt Aléatoire", fontsize=16, color="#2c3e50")
+        ax.set_xlabel("Fold", fontsize=12)
+        ax.set_ylabel("Précision", fontsize=12)
+        ax.grid(axis='y', linestyle='--', alpha=0.4)
 
-        elif choice == "foret":
-            np.random.seed(3)
-            X = np.random.randn(200, 5)
-            y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(200)*0.1 > 0).astype(int)
-            clf = RandomForestClassifier(n_estimators=100, random_state=3)
-            scores = cross_val_score(clf, X, y, cv=5, scoring='accuracy')
-            messagebox.showinfo("Validation Croisée", 
-                f"Modèle : Forêt Aléatoire\nScores d'accuracy pour chaque pli (5-fold) :\n{scores}\nMoyenne accuracy : {np.mean(scores):.3f}")
+        self._display_figure(fig)
 
-        else:
-            messagebox.showerror("Erreur", "Modèle non reconnu. Entrez 'regression' ou 'foret'.")
-
+# Ajouter à la fin du fichier
 if __name__ == "__main__":
     root = tk.Tk()
     app = HealthAIApp(root)
