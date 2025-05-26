@@ -1,156 +1,208 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.cluster import KMeans
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from statsmodels.tsa.arima.model import ARIMA
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import cross_val_score
 
 class HealthAIApp:
     def __init__(self, root):
         self.root = root
-        root.title("HealthAI - Analyse de données de santé")
-        root.geometry("900x600")
-        root.configure(bg="#f0f0f0")
+        root.title("HealthAI - Analyse Intelligente de la Santé")
+        root.geometry("1000x620")
+        root.configure(bg="#ecf0f1")
 
-        # Frame menu à gauche avec fond coloré
-        self.frame_menu = tk.Frame(root, bg="#2c3e50", width=220)
-        self.frame_menu.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+        # Menu latéral
+        self.menu = tk.Frame(root, bg="#2c3e50", width=220)
+        self.menu.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
 
-        # Titre menu
-        title = tk.Label(self.frame_menu, text="Menu Principal", font=("Arial", 16, "bold"), bg="#2c3e50", fg="white")
-        title.grid(row=0, column=0, pady=20, padx=10)
+        tk.Label(self.menu, text="HealthAI", font=("Arial", 20, "bold"),
+                 fg="white", bg="#2c3e50").pack(pady=20)
 
-        # Boutons colorés dans le menu, avec couleur et hover simplifié
-        button_specs = [
-            ("Régression Linéaire", self.run_regression, "#1abc9c"),
-            ("Clustering K-means", self.run_clustering, "#3498db"),
-            ("ARIMA (Séries temporelles)", self.run_arima, "#9b59b6"),
-            ("Forêt Aléatoire", self.run_random_forest, "#e67e22"),
-            ("1.3.6 Validation Croisée", self.run_cross_validation, "#e74c3c"),
-            ("Quitter", root.quit, "#c0392b")
+        buttons = [
+            ("Régression Linéaire", self.run_regression),
+            ("Clustering K-means", self.run_clustering),
+            ("Prévision ARIMA", self.run_arima),
+            ("Forêt Aléatoire", self.run_random_forest),
+            ("Validation croisée", self.run_prediction_bar),  # Nom mis à jour ici
+            ("Quitter", root.quit)
         ]
 
-        for i, (text, cmd, color) in enumerate(button_specs, start=1):
-            btn = tk.Button(self.frame_menu, text=text, command=cmd, bg=color, fg="white",
-                            activebackground="#34495e", font=("Arial", 12), bd=0, relief="raised")
-            btn.grid(row=i, column=0, sticky="ew", padx=10, pady=8)
+        for txt, cmd in buttons:
+            tk.Button(self.menu, text=txt, command=cmd,
+                      bg="#1abc9c", fg="white", bd=0,
+                      font=("Arial", 12), pady=10, padx=5,
+                      activebackground="#16a085").pack(fill="x", pady=5, padx=10)
 
-        # Zone graphique à droite
-        self.frame_graph = tk.Frame(root, bg="white")
-        self.frame_graph.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Formulaire utilisateur
+        self.inputs = tk.Frame(root, bg="#ecf0f1")
+        self.inputs.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-    def clear_frame(self):
-        for widget in self.frame_graph.winfo_children():
+        self.vars = {}
+        for label in ["Âge", "IMC", "Tension", "Glycémie"]:
+            frame = tk.Frame(self.inputs, bg="#ecf0f1")
+            frame.pack(side=tk.LEFT, padx=10)
+            tk.Label(frame, text=label, bg="#ecf0f1", font=("Arial", 11)).pack()
+            var = tk.StringVar()
+            entry = tk.Entry(frame, textvariable=var, width=10, font=("Arial", 11))
+            entry.pack()
+            self.vars[label] = var
+
+        self.refresh_btn = tk.Button(self.inputs, text="Actualiser", command=self.refresh,
+                                     bg="#2980b9", fg="white", font=("Arial", 11),
+                                     padx=20, pady=5)
+        self.refresh_btn.pack(side=tk.LEFT, padx=20)
+
+        # Espace graphique
+        self.graph = tk.Frame(root, bg="white")
+        self.graph.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    def clear_graph(self):
+        for widget in self.graph.winfo_children():
             widget.destroy()
 
-    def _display_figure(self, fig):
-        self.clear_frame()
-        canvas = FigureCanvasTkAgg(fig, master=self.frame_graph)
+    def show_plot(self, fig):
+        self.clear_graph()
+        canvas = FigureCanvasTkAgg(fig, master=self.graph)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+    def get_user_inputs(self):
+        try:
+            age = float(self.vars["Âge"].get())
+            imc = float(self.vars["IMC"].get())
+            tension = float(self.vars["Tension"].get())
+            glycemie = float(self.vars["Glycémie"].get())
+            return age, imc, tension, glycemie
+        except ValueError:
+            messagebox.showerror("Erreur", "Veuillez remplir tous les champs avec des valeurs valides.")
+            return None
+
+    def refresh(self):
+        for var in self.vars.values():
+            var.set("")
+
     def run_regression(self):
-        np.random.seed(0)
+        data = self.get_user_inputs()
+        if not data: return
+        age, _, _, _ = data
+
         ages = np.random.randint(20, 70, 100)
-        cholest = 0.5 * ages + np.random.normal(0, 5, 100)
+        chol = 0.5 * ages + np.random.normal(0, 5, 100)
 
         model = LinearRegression()
-        model.fit(ages.reshape(-1, 1), cholest)
+        model.fit(ages.reshape(-1, 1), chol)
         pred = model.predict(ages.reshape(-1, 1))
+        mse = mean_squared_error(chol, pred)
 
-        mse = mean_squared_error(cholest, pred)
-
-        fig, ax = plt.subplots(figsize=(6,5))
-        ax.scatter(ages, cholest, label="Données réelles", c="#16a085", alpha=0.7)
-        ax.plot(ages, pred, color="#e74c3c", linewidth=2, label="Régression linéaire")
-        ax.set_title(f"Régression linéaire : âge vs cholestérol\nMSE = {mse:.2f}", fontsize=16, color="#2c3e50")
-        ax.set_xlabel("Âge", fontsize=12)
-        ax.set_ylabel("Cholestérol", fontsize=12)
+        fig, ax = plt.subplots(figsize=(6, 5))
+        ax.scatter(ages, chol, c="#16a085", label="Données", alpha=0.6)
+        ax.plot(ages, pred, c="#e74c3c", label="Régression")
+        ax.set_title("Âge vs Cholestérol", fontsize=14)
+        ax.set_xlabel("Âge")
+        ax.set_ylabel("Cholestérol")
         ax.legend()
-        ax.grid(True, linestyle='--', alpha=0.5)
+        ax.grid(True)
 
-        self._display_figure(fig)
-
-        messagebox.showinfo("Résultat MSE", f"Erreur quadratique moyenne (MSE) : {mse:.2f}")
+        self.show_plot(fig)
+        messagebox.showinfo("MSE", f"Erreur quadratique moyenne : {mse:.2f}")
 
     def run_clustering(self):
-        np.random.seed(1)
-        imc = np.random.normal(25, 4, 100)
-        tension = np.random.normal(130, 15, 100)
-        data = np.column_stack((imc, tension))
-        kmeans = KMeans(n_clusters=3, random_state=1)
-        clusters = kmeans.fit_predict(data)
+        data = self.get_user_inputs()
+        if not data: return
+        _, imc, tension, _ = data
 
-        fig, ax = plt.subplots(figsize=(6,5))
-        scatter = ax.scatter(imc, tension, c=clusters, cmap="Set2", alpha=0.85, edgecolor='k')
-        ax.set_title("Clustering K-means : IMC et Tension", fontsize=16, color="#2c3e50")
-        ax.set_xlabel("IMC", fontsize=12)
-        ax.set_ylabel("Tension artérielle", fontsize=12)
-        legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
-        ax.add_artist(legend1)
-        ax.grid(True, linestyle='--', alpha=0.4)
+        imc_data = np.random.normal(imc, 3, 100)
+        tension_data = np.random.normal(tension, 10, 100)
+        X = np.column_stack((imc_data, tension_data))
 
-        self._display_figure(fig)
+        kmeans = KMeans(n_clusters=3)
+        clusters = kmeans.fit_predict(X)
+
+        fig, ax = plt.subplots(figsize=(6, 5))
+        scatter = ax.scatter(X[:, 0], X[:, 1], c=clusters, cmap="Set2", edgecolor='k')
+        ax.set_title("Clustering : IMC vs Tension")
+        ax.set_xlabel("IMC")
+        ax.set_ylabel("Tension artérielle")
+        ax.grid(True)
+        self.show_plot(fig)
 
     def run_arima(self):
-        np.random.seed(2)
-        data = np.cumsum(np.random.normal(0, 1, 50)) + 100
-        model = ARIMA(data, order=(2,1,2))
-        model_fit = model.fit()
-        forecast = model_fit.forecast(steps=10)
+        data = self.get_user_inputs()
+        if not data: return
+        _, _, _, gly = data
 
-        fig, ax = plt.subplots(figsize=(6,5))
-        ax.plot(range(len(data)), data, label="Glycémie historique", color="#2980b9", linewidth=2)
-        ax.plot(range(len(data), len(data)+10), forecast, label="Prévision ARIMA", color="#c0392b", linestyle='--', linewidth=2)
-        ax.set_title("Prévision glycémie avec ARIMA", fontsize=16, color="#2c3e50")
-        ax.set_xlabel("Temps (jours)", fontsize=12)
-        ax.set_ylabel("Glycémie", fontsize=12)
+        series = np.cumsum(np.random.normal(0, 1, 50)) + gly
+        model = ARIMA(series, order=(2, 1, 2))
+        result = model.fit()
+        forecast = result.forecast(10)
+
+        fig, ax = plt.subplots(figsize=(6, 5))
+        ax.plot(series, label="Historique", c="#3498db")
+        ax.plot(range(len(series), len(series)+10), forecast, label="Prévision", c="#e67e22")
+        ax.set_title("Prévision Glycémie (ARIMA)")
+        ax.set_xlabel("Temps (jours)")
+        ax.set_ylabel("Glycémie")
         ax.legend()
-        ax.grid(True, linestyle='--', alpha=0.4)
-
-        self._display_figure(fig)
+        ax.grid(True)
+        self.show_plot(fig)
 
     def run_random_forest(self):
-        np.random.seed(3)
         X = np.random.randn(200, 5)
-        y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(200)*0.1 > 0).astype(int)
+        y = (X[:, 0] + X[:, 1]*0.5 + np.random.randn(200)*0.1 > 0).astype(int)
+        model = RandomForestClassifier()
+        model.fit(X, y)
+        importances = model.feature_importances_
 
-        clf = RandomForestClassifier(n_estimators=100, random_state=3)
-        clf.fit(X, y)
-        importances = clf.feature_importances_
+        fig, ax = plt.subplots(figsize=(6, 5))
+        ax.bar(range(5), importances, color="#2ecc71")
+        ax.set_title("Importance des variables")
+        ax.set_xlabel("Variables")
+        ax.set_ylabel("Importance")
+        ax.grid(True)
+        self.show_plot(fig)
 
-        fig, ax = plt.subplots(figsize=(6,5))
-        bars = ax.bar(range(len(importances)), importances, color=["#27ae60", "#2980b9", "#8e44ad", "#d35400", "#c0392b"])
-        ax.set_title("Importance des variables - Forêt Aléatoire", fontsize=16, color="#2c3e50")
-        ax.set_xlabel("Variables", fontsize=12)
-        ax.set_ylabel("Importance", fontsize=12)
-        ax.grid(axis='y', linestyle='--', alpha=0.4)
+    def run_prediction_bar(self):  # Remplacé par validation croisée
+        data = self.get_user_inputs()
+        if not data: return
+        age, _, _, _ = data
 
-        self._display_figure(fig)
+        # Données simulées
+        X = np.linspace(20, 70, 100).reshape(-1, 1)
+        y = 0.6 * X.flatten() + np.random.normal(0, 5, 100)
 
-    def run_cross_validation(self):
-        np.random.seed(4)
-        X = np.random.randn(200, 5)
-        y = (X[:, 0] + X[:, 1] * 0.5 + np.random.randn(200)*0.1 > 0).astype(int)
+        models = {
+            "Régression Linéaire": LinearRegression(),
+            "Forêt Aléatoire": RandomForestRegressor(n_estimators=100)
+        }
 
-        clf = RandomForestClassifier(n_estimators=100, random_state=4)
-        scores = cross_val_score(clf, X, y, cv=5)
+        scores = {}
+        for name, model in models.items():
+            cv_scores = cross_val_score(model, X, y, cv=5, scoring='neg_mean_squared_error')
+            mse_scores = -cv_scores
+            scores[name] = np.mean(mse_scores)
 
-        fig, ax = plt.subplots(figsize=(6,5))
-        ax.bar(range(1, 6), scores, color="#2980b9")
-        ax.set_title("Validation croisée - Forêt Aléatoire", fontsize=16, color="#2c3e50")
-        ax.set_xlabel("Fold", fontsize=12)
-        ax.set_ylabel("Précision", fontsize=12)
-        ax.grid(axis='y', linestyle='--', alpha=0.4)
+        fig, ax = plt.subplots(figsize=(6, 5))
+        names = list(scores.keys())
+        values = list(scores.values())
+        bars = ax.bar(names, values, color=["#3498db", "#2ecc71"])
+        ax.set_ylabel("Erreur quadratique moyenne (MSE)")
+        ax.set_title("Validation croisée : Régression vs Forêt")
+        ax.grid(True, linestyle="--", alpha=0.5)
 
-        self._display_figure(fig)
+        for i, bar in enumerate(bars):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2.0, height + 0.5,
+                    f"{height:.2f}", ha='center', va='bottom', fontsize=10)
 
-# Ajouter à la fin du fichier
+        self.show_plot(fig)
+
+# Lancer l'application
 if __name__ == "__main__":
     root = tk.Tk()
     app = HealthAIApp(root)
